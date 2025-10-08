@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin & User Auth Dashboard 🌐</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<style>
+  body {
+    background: linear-gradient(135deg, #6a11cb, #2575fc);
+    font-family: 'Poppins', sans-serif;
+    color: white;
+    min-height: 100vh;
+    padding: 40px;
+  }
+  .auth-container {
+    max-width: 450px;
+    margin: 60px auto;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+  }
+  .hidden { display: none; }
+  .user-card {
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+    transition: 0.3s;
+  }
+  .user-card:hover { transform: translateY(-5px); }
+  .avatar {
+    width: 90px; height: 90px; border-radius: 50%; border: 3px solid white; object-fit: cover;
+  }
+  .favorite {
+    position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 1.5rem;
+  }
+  .btn-custom { border-radius: 25px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE -->
+<div id="authPage" class="auth-container animate__animated animate__fadeInDown">
+  <h2 class="text-center mb-3">🔐 Login or Register</h2>
+  <div class="mb-3">
+    <select id="roleSelect" class="form-select">
+      <option value="user">👥 User</option>
+      <option value="admin">👨‍💼 Admin</option>
+    </select>
+  </div>
+  <form id="authForm">
+    <div class="mb-3">
+      <input type="text" id="username" class="form-control" placeholder="👤 Username" required>
+    </div>
+    <div class="mb-3">
+      <input type="password" id="password" class="form-control" placeholder="🔑 Password" required>
+    </div>
+    <div class="d-flex justify-content-between">
+      <button type="submit" id="loginBtn" class="btn btn-success btn-custom w-50">Login</button>
+      <button type="button" id="registerBtn" class="btn btn-warning btn-custom w-50">Register</button>
+    </div>
+  </form>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="dashboardPage" class="hidden animate__animated animate__fadeInUp">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 id="dashboardTitle">👨‍💼 Admin Dashboard</h2>
+    <button id="logout" class="btn btn-danger btn-custom">🚪 Logout</button>
+  </div>
+
+  <!-- Search -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <input type="text" id="search" class="form-control w-25" placeholder="🔍 Search by name or email">
+  </div>
+
+  <!-- Admin Section -->
+  <div id="adminSection">
+    <form id="userForm" class="row g-2 mb-4">
+      <div class="col-md-3">
+        <input type="text" id="name" class="form-control" placeholder="👤 Name" required>
+      </div>
+      <div class="col-md-3">
+        <input type="email" id="email" class="form-control" placeholder="📧 Email" required>
+      </div>
+      <div class="col-md-3">
+        <input type="file" id="avatar" accept="image/*" class="form-control">
+      </div>
+      <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-success btn-custom w-50">💾 Save</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-hover text-white align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Avatar</th>
+            <th>Name 😃</th>
+            <th>Email 📧</th>
+            <th>Favorite ❤️</th>
+            <th>Actions ⚙️</th>
+          </tr>
+        </thead>
+        <tbody id="adminTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- User Section -->
+  <div id="userSection" class="hidden">
+    <div class="row" id="userGrid"></div>
+  </div>
+</div>
+
+
+<!-- 🧠 Access Summary
+Role	Username	Password	Access
+👨‍💼 Admin	gopalsing	1234	Add, Edit, Delete, Manage Users
+👥 User	Register via form	Custom	View users, mark ❤️ favorites
+
+Would you like me to upgrade this version next with:
+📱 Sidebar navigation
+🌙 Dark mode toggle
+✨ Dashboard animations (slide transitions)? -->
+
+<script>
+  // ====== AUTHENTICATION ======
+  const authPage = document.getElementById('authPage');
+  const dashboardPage = document.getElementById('dashboardPage');
+  const registerBtn = document.getElementById('registerBtn');
+  const authForm = document.getElementById('authForm');
+  const usernameInput = document.getElementById('username');
+  const passwordInput = document.getElementById('password');
+  const roleSelect = document.getElementById('roleSelect');
+
+  let usersDB = JSON.parse(localStorage.getItem('usersDB')) || [];
+  let currentUser = null;
+
+  // Default admin account
+  const defaultAdmin = { username: 'gopalsing', password: '1234', role: 'admin' };
+
+  // Register user
+  registerBtn.addEventListener('click', () => {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    const role = roleSelect.value;
+
+    if (!username || !password) return alert('⚠️ Fill all fields!');
+    if (role === 'admin') return alert('⚠️ Admin cannot be registered manually!');
+    if (usersDB.some(u => u.username === username)) return alert('⚠️ Username already exists!');
+
+    usersDB.push({ username, password, role: 'user' });
+    localStorage.setItem('usersDB', JSON.stringify(usersDB));
+    alert('✅ Registered successfully! Now login.');
+  });
+
+  // Login
+  authForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value.trim();
+    const role = roleSelect.value;
+
+    if (username === defaultAdmin.username && password === defaultAdmin.password && role === 'admin') {
+      currentUser = defaultAdmin;
+      loadDashboard();
+      return;
+    }
+
+    const user = usersDB.find(u => u.username === username && u.password === password && u.role === role);
+    if (user) {
+      currentUser = user;
+      loadDashboard();
+    } else {
+      alert('❌ Invalid username, password, or role!');
+    }
+  });
+
+  function loadDashboard() {
+    authPage.classList.add('hidden');
+    dashboardPage.classList.remove('hidden');
+    renderData();
+
+    const adminSection = document.getElementById('adminSection');
+    const userSection = document.getElementById('userSection');
+    const title = document.getElementById('dashboardTitle');
+
+    if (currentUser.role === 'admin') {
+      adminSection.classList.remove('hidden');
+      userSection.classList.add('hidden');
+      title.textContent = '👨‍💼 Admin Dashboard';
+    } else {
+      adminSection.classList.add('hidden');
+      userSection.classList.remove('hidden');
+      title.textContent = '👥 User Dashboard';
+    }
+  }
+
+  // Logout
+  document.getElementById('logout').addEventListener('click', () => {
+    currentUser = null;
+    authPage.classList.remove('hidden');
+    dashboardPage.classList.add('hidden');
+  });
+
+  // ====== CRUD + FAVORITE ======
+  let users = [];
+  let editIndex = -1;
+  const userForm = document.getElementById('userForm');
+  const adminTable = document.getElementById('adminTable');
+  const userGrid = document.getElementById('userGrid');
+  const search = document.getElementById('search');
+
+  userForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const avatarFile = document.getElementById('avatar').files[0];
+
+    const duplicate = users.some((u, i) => i !== editIndex && (u.name === name || u.email === email));
+    if (duplicate) return alert('⚠️ Duplicate name or email!');
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const avatar = avatarFile ? ev.target.result : 'https://via.placeholder.com/50';
+      if (editIndex === -1)
+        users.push({ name, email, avatar, favorite: false });
+      else {
+        users[editIndex] = { ...users[editIndex], name, email, avatar };
+        editIndex = -1;
+      }
+      userForm.reset();
+      renderData();
+    };
+    if (avatarFile) reader.readAsDataURL(avatarFile);
+    else {
+      if (editIndex === -1)
+        users.push({ name, email, avatar: 'https://via.placeholder.com/50', favorite: false });
+      else {
+        users[editIndex] = { ...users[editIndex], name, email };
+        editIndex = -1;
+      }
+      userForm.reset();
+      renderData();
+    }
+  });
+
+  function renderData() {
+    renderAdminTable();
+    renderUserCards();
+  }
+
+  function renderAdminTable() {
+    adminTable.innerHTML = '';
+    const keyword = search.value.toLowerCase();
+    users
+      .filter(u => u.name.toLowerCase().includes(keyword) || u.email.toLowerCase().includes(keyword))
+      .forEach((user, i) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><img src="${user.avatar}" width="50" height="50" style="border-radius:50%"></td>
+          <td>${user.name}</td>
+          <td>${user.email}</td>
+          <td><span class="favorite" onclick="toggleFavorite(${i})">${user.favorite ? '❤️' : '🤍'}</span></td>
+          <td>
+            <button class="btn btn-warning btn-sm" onclick="editUser(${i})">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteUser(${i})">🗑️</button>
+          </td>
+        `;
+        adminTable.appendChild(row);
+      });
+  }
+
+  function renderUserCards() {
+    userGrid.innerHTML = '';
+    const keyword = search.value.toLowerCase();
+    users
+      .filter(u => u.name.toLowerCase().includes(keyword) || u.email.toLowerCase().includes(keyword))
+      .forEach((user, i) => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-4 animate__animated animate__fadeInUp';
+        col.innerHTML = `
+          <div class="user-card position-relative">
+            <span class="favorite" onclick="toggleFavorite(${i})">${user.favorite ? '❤️' : '🤍'}</span>
+            <img src="${user.avatar}" class="avatar mb-2" alt="avatar">
+            <h5>${user.name}</h5>
+            <p>${user.email}</p>
+          </div>
+        `;
+        userGrid.appendChild(col);
+      });
+  }
+
+  function toggleFavorite(i) {
+    users[i].favorite = !users[i].favorite;
+    renderData();
+  }
+
+  function editUser(i) {
+    document.getElementById('name').value = users[i].name;
+    document.getElementById('email').value = users[i].email;
+    editIndex = i;
+  }
+
+  function deleteUser(i) {
+    if (confirm('🗑️ Delete this user?')) {
+      users.splice(i, 1);
+      renderData();
+    }
+  }
+
+  search.addEventListener('input', renderData);
+</script>
+
+</body>
+</html>
